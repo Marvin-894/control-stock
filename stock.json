@@ -1,0 +1,18 @@
+[
+  {
+    "sku": "7791234567890",
+    "nombre": "Cuaderno Universitario A4 Anillado 80 hjs",
+    "categoria": "Escolar",
+    "precio": 3500.00,
+    "stock": 24,
+    "minimo": 5
+  },
+  {
+    "sku": "7799876543210",
+    "nombre": "Lapicera Roller Gel Negra 0.5mm",
+    "categoria": "Librería",
+    "precio": 1200.00,
+    "stock": 3,
+    "minimo": 10
+  }
+]

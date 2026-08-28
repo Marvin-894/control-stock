@@ -16,6 +16,7 @@
   const searchInput = document.getElementById('search-input');
 
   function setStatus(text, type) {
+    if (!statusEl) return;
     statusEl.textContent = text;
     statusEl.className = type ? `sync-${type}` : '';
   }
@@ -49,7 +50,7 @@
     }
   }
 
-  async function guardarEnGitHub(skuModificado, cambio) {
+  async function guardarEnGitHub(skuModificado, accionLog) {
     guardando = true;
     setStatus('⌛ Guardando...', 'saving');
     const url = `https://api.github.com/repos/${CONFIG.OWNER}/${CONFIG.REPO}/contents/${CONFIG.FILE}`;
@@ -59,7 +60,7 @@
       const nuevoContenidoBase64 = btoa(unescape(encodeURIComponent(jsonString)));
       
       const bodyData = {
-        message: `Stock actualizado: SKU ${skuModificado}`,
+        message: `Actualización SKU ${skuModificado}: ${accionLog}`,
         content: nuevoContenidoBase64,
         sha: fileSha
       };
@@ -76,7 +77,7 @@
       if (!res.ok) throw new Error('Error al guardar en GitHub');
       
       const resData = await res.json();
-      fileSha = resData.content.sha; // Actualiza la firma para el próximo clic
+      fileSha = resData.content.sha; // Actualiza el SHA para el próximo guardado
       setStatus('● Sincronizado', 'ok');
     } catch (err) {
       console.error(err);
@@ -87,27 +88,40 @@
   }
 
   function modificarStock(sku, delta) {
-    // Acepta coincidencia exacta o numerica
     const prod = productos.find(p => String(p.sku) === String(sku));
     if (prod) {
       const nuevoStock = (Number(prod.stock) || 0) + delta;
       prod.stock = nuevoStock < 0 ? 0 : nuevoStock;
       
       render(); // Actualiza la pantalla inmediatamente
-      guardarEnGitHub(sku, delta);
+      guardarEnGitHub(sku, `Stock ajustado a ${prod.stock}`);
+    }
+  }
+
+  function modificarPrecioVenta(sku, nuevoPrecioStr) {
+    const nuevoPrecio = parseFloat(nuevoPrecioStr.replace(',', '.'));
+    if (isNaN(nuevoPrecio) || nuevoPrecio < 0) return;
+
+    const prod = productos.find(p => String(p.sku) === String(sku));
+    if (prod && prod.precio !== nuevoPrecio) {
+      prod.precio = nuevoPrecio;
+      render();
+      guardarEnGitHub(sku, `Precio de venta actualizado a $${nuevoPrecio}`);
     }
   }
 
   function toggleFaltantes() {
     soloFaltantes = !soloFaltantes;
     const btn = document.getElementById('filter-btn');
-    btn.classList.toggle('active', soloFaltantes);
-    btn.textContent = soloFaltantes ? 'Mostrando Faltantes (Ver Todos)' : '⭐ Reponer Faltantes';
+    if (btn) {
+      btn.classList.toggle('active', soloFaltantes);
+      btn.textContent = soloFaltantes ? 'Mostrando Faltantes (Ver Todos)' : '⭐ Reponer Faltantes';
+    }
     render();
   }
 
   function render() {
-    const query = searchInput.value.toLowerCase().trim();
+    const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
     listEl.innerHTML = '';
 
     const filtrados = productos.filter(p => {
@@ -115,7 +129,6 @@
       const sku = String(p.sku || '').toLowerCase();
       const coincideBusqueda = nombre.includes(query) || sku.includes(query);
       
-      // Control de faltantes: Si no tiene definido "minimo", usa 5 por defecto o evalúa si stock es 0
       const limiteMinimo = p.minimo !== undefined ? Number(p.minimo) : 5;
       const esFaltante = (Number(p.stock) || 0) <= limiteMinimo;
       
@@ -132,16 +145,34 @@
       const stockActual = Number(p.stock) || 0;
       const limiteMinimo = p.minimo !== undefined ? Number(p.minimo) : 5;
       const esCritico = stockActual <= limiteMinimo;
-      
+
+      const costoMayorista = p.costo !== undefined ? Number(p.costo) : 0;
+      const precioUnitario = p.precioUnitario !== undefined ? Number(p.precioUnitario) : 0;
+      const precioVenta = Number(p.precio) || 0;
+
       const card = document.createElement('div');
       card.className = `product-card ${esCritico ? 'low-stock' : ''}`;
       
       card.innerHTML = `
         <div class="card-info">
-          <div class="card-category">${p.categoria || 'Gral'} | SKU: ${p.sku}</div>
+          <div class="card-category">${p.categoria || 'Librería'} | SKU: ${p.sku}</div>
           <div class="card-title">${p.nombre}</div>
-          <div class="card-price">$${(Number(p.precio) || 0).toLocaleString('es-AR')}</div>
+          
+          <div class="price-details" style="font-size: 0.82rem; color: #555; margin-top: 4px;">
+            <span><strong>Costo Mayorista:</strong> $${costoMayorista.toLocaleString('es-AR')}</span>
+            ${precioUnitario > 0 ? `<span style="margin-left: 8px;">| <strong>Unitario:</strong> $${precioUnitario.toLocaleString('es-AR')}</span>` : ''}
+          </div>
+
+          <div class="card-price" style="margin-top: 6px; display: flex; align-items: center; gap: 6px;">
+            <label style="font-size: 0.9rem; font-weight: bold; color: #2c3e50;">Venta: $</label>
+            <input type="number" 
+                   step="0.01" 
+                   value="${precioVenta}" 
+                   style="width: 100px; padding: 4px 6px; font-weight: bold; font-size: 1rem; border: 1px solid #ccc; border-radius: 4px;"
+                   onchange="modificarPrecioVenta('${p.sku}', this.value)" />
+          </div>
         </div>
+
         <div class="card-controls">
           <button class="btn-stock btn-minus" onclick="modificarStock('${p.sku}', -1)">-</button>
           <span class="stock-count ${esCritico ? 'alert' : ''}">${stockActual}</span>
@@ -152,6 +183,6 @@
     });
   }
 
-  searchInput.addEventListener('input', render);
+  if (searchInput) searchInput.addEventListener('input', render);
   cargarStock();
 </script>

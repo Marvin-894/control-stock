@@ -179,9 +179,9 @@
 <script>
   // CONFIGURACIÓN DE TU REPOSITORIO DE GITHUB
   const CONFIG = {
-    TOKEN: 'TU_PERSONAL_ACCESS_TOKEN', // Pega aquí tu PAT
-    OWNER: 'TU_USUARIO_GITHUB',
-    REPO: 'nombre-de-tu-repositorio',
+    TOKEN: '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',
+    OWNER: 'Marvin-894',
+    REPO: 'control-stock',
     FILE: 'stock.json'
   };
 
@@ -270,3 +270,48 @@
 
   function toggleFaltantes() {
     soloFaltantes = !soloFaltantes;
+    const btn = document.getElementById('filter-btn');
+    btn.classList.toggle('active', soloFaltantes);
+    btn.textContent = soloFaltantes ? 'Mostrando solo Faltantes (Ver Todos)' : 'Mostrar solo Faltantes';
+    render();
+  }
+
+  function render() {
+    const query = searchInput.value.toLowerCase().trim();
+    listEl.innerHTML = '';
+
+    const filtrados = productos.filter(p => {
+      const coincideBusqueda = p.nombre.toLowerCase().includes(query) || p.sku.toLowerCase().includes(query);
+      const coincideFaltante = soloFaltantes ? p.stock <= p.minimo : true;
+      return coincideBusqueda && coincideFaltante;
+    });
+
+    filtrados.forEach(p => {
+      const esCritico = p.stock <= p.minimo;
+      const card = document.createElement('div');
+      card.className = `product-card ${esCritico ? 'low-stock' : ''}`;
+      
+      card.innerHTML = `
+        <div class="info">
+          <div class="sku">${p.sku} | ${p.categoria}</div>
+          <div class="nombre">${p.nombre}</div>
+          <div class="precio">$${p.precio.toLocaleString('es-AR')}</div>
+        </div>
+        <div class="controls">
+          <button class="btn-stock btn-minus" onclick="modificarStock('${p.sku}', -1)">-</button>
+          <span class="stock-badge ${esCritico ? 'alert' : ''}">${p.stock}</span>
+          <button class="btn-stock btn-plus" onclick="modificarStock('${p.sku}', 1)">+</button>
+        </div>
+      `;
+      listEl.appendChild(card);
+    });
+  }
+
+  searchInput.addEventListener('input', render);
+  
+  // Inicializar al abrir la página
+  cargarStock();
+</script>
+
+</body>
+</html>

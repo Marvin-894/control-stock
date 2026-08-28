@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Control de Stock - Librería</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #0f172a;
+      --danger: #ef4444;
+      --success: #22c55e;
+      --warning: #eab308;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 16px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 600px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      font-size: 1.25rem;
+      margin: 0;
+    }
+
+    #sync-status {
+      font-size: 0.85rem;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-weight: 600;
+      background-color: #e2e8f0;
+      color: #475569;
+    }
+
+    .sync-ok { background-color: #dcfce7 !important; color: #166534 !important; }
+    .sync-saving { background-color: #fef9c3 !important; color: #854d0e !important; }
+    .sync-error { background-color: #fee2e2 !important; color: #991b1b !important; }
+
+    .search-box {
+      width: 100%;
+      padding: 12px;
+      font-size: 1rem;
+      border: 2px solid #cbd5e1;
+      border-radius: 8px;
+      box-sizing: border-box;
+      margin-bottom: 12px;
+      outline: none;
+    }
+
+    .search-box:focus {
+      border-color: var(--primary);
+    }
+
+    .filter-btn {
+      width: 100%;
+      padding: 10px;
+      background-color: #e2e8f0;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 16px;
+    }
+
+    .filter-btn.active {
+      background-color: var(--danger);
+      color: white;
+    }
+
+    .product-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .product-card {
+      background: var(--card-bg);
+      padding: 16px;
+      border-radius: 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .product-card.low-stock {
+      border-left: 5px solid var(--danger);
+    }
+
+    .info {
+      flex-grow: 1;
+      padding-right: 12px;
+    }
+
+    .sku {
+      font-size: 0.75rem;
+      color: #64748b;
+      margin-bottom: 2px;
+    }
+
+    .nombre {
+      font-weight: 600;
+      font-size: 1rem;
+      margin-bottom: 4px;
+    }
+
+    .precio {
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-stock {
+      width: 40px;
+      height: 40px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1.2rem;
+      font-weight: bold;
+      cursor: pointer;
+      color: white;
+      touch-action: manipulation;
+    }
+
+    .btn-minus { background-color: var(--danger); }
+    .btn-plus { background-color: var(--success); }
+
+    .stock-badge {
+      font-size: 1.1rem;
+      font-weight: 800;
+      min-width: 30px;
+      text-align: center;
+    }
+
+    .stock-badge.alert {
+      color: var(--danger);
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>Gestión de Stock</h1>
+    <span id="sync-status">Cargando...</span>
+  </header>
+
+  <input type="text" id="search-input" class="search-box" placeholder="Buscar por nombre o código de barras..." autofocus>
+  
+  <button id="filter-btn" class="filter-btn" onclick="toggleFaltantes()">Mostrar solo Faltantes</button>
+
+  <div id="product-list" class="product-list"></div>
+</div>
+
+<script>
+  // CONFIGURACIÓN DE TU REPOSITORIO DE GITHUB
+  const CONFIG = {
+    TOKEN: 'TU_PERSONAL_ACCESS_TOKEN', // Pega aquí tu PAT
+    OWNER: 'TU_USUARIO_GITHUB',
+    REPO: 'nombre-de-tu-repositorio',
+    FILE: 'stock.json'
+  };
+
+  let productos = [];
+  let fileSha = '';
+  let soloFaltantes = false;
+
+  const statusEl = document.getElementById('sync-status');
+  const listEl = document.getElementById('product-list');
+  const searchInput = document.getElementById('search-input');
+
+  function setStatus(text, type) {
+    statusEl.textContent = text;
+    statusEl.className = type ? `sync-${type}` : '';
+  }
+
+  // Cargar datos desde GitHub API
+  async function cargarStock() {
+    setStatus('Cargando...', 'saving');
+    const url = `https://api.github.com/repos/${CONFIG.OWNER}/${CONFIG.REPO}/contents/${CONFIG.FILE}`;
+    
+    try {
+      const res = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${CONFIG.TOKEN}` }
+      });
+      if (!res.ok) throw new Error('Error al conectar con GitHub');
+      
+      const data = await res.json();
+      fileSha = data.sha;
+      const decoded = decodeURIComponent(escape(atob(data.content)));
+      productos = JSON.parse(decoded);
+      
+      setStatus('Sincronizado', 'ok');
+      render();
+    } catch (err) {
+      console.error(err);
+      setStatus('Error de conexión', 'error');
+    }
+  }
+
+  // Guardar cambios actualizados en GitHub
+  async function guardarEnGitHub(skuModificado, cambio) {
+    setStatus('Guardando...', 'saving');
+    const url = `https://api.github.com/repos/${CONFIG.OWNER}/${CONFIG.REPO}/contents/${CONFIG.FILE}`;
+    
+    try {
+      const nuevoContenidoBase64 = btoa(unescape(encodeURIComponent(JSON.stringify(productos, null, 2))));
+      
+      const bodyData = {
+        message: `Stock: ${skuModificado} (${cambio > 0 ? '+' : ''}${cambio})`,
+        content: nuevoContenidoBase64,
+        sha: fileSha
+      };
+
+      const res = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${CONFIG.TOKEN}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(bodyData)
+      });
+
+      if (!res.ok) throw new Error('Conflicto al guardar');
+      
+      const resData = await res.json();
+      fileSha = resData.content.sha; // Actualizar SHA del commit
+      setStatus('Sincronizado', 'ok');
+    } catch (err) {
+      console.error(err);
+      setStatus('Error al guardar', 'error');
+      // Recargar stock por si hubo desfase de SHA
+      cargarStock();
+    }
+  }
+
+  function modificarStock(sku, delta) {
+    const prod = productos.find(p => p.sku === sku);
+    if (prod) {
+      prod.stock += delta;
+      if (prod.stock < 0) prod.stock = 0;
+      render();
+      guardarEnGitHub(sku, delta);
+    }
+  }
+
+  function toggleFaltantes() {
+    soloFaltantes = !soloFaltantes;

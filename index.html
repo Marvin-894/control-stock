@@ -94,33 +94,41 @@
     .card-title { font-weight: bold; font-size: 1.05rem; color: #2c3e50; margin: 4px 0 6px 0; }
     
     .price-details {
-      font-size: 0.82rem;
-      color: #555;
+      font-size: 0.85rem;
+      color: #333;
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
+      align-items: center;
+      gap: 12px;
       background: #f8f9fa;
-      padding: 6px 10px;
-      border-radius: 4px;
-      margin-top: 4px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      margin-top: 8px;
     }
 
-    .card-price {
-      margin-top: 8px;
+    .price-input-group {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 4px;
     }
 
-    .card-price input {
-      width: 110px;
-      padding: 5px 8px;
+    .price-input-group label {
+      font-size: 0.8rem;
       font-weight: bold;
-      font-size: 1rem;
+      color: #555;
+    }
+
+    .price-input-group input {
+      padding: 4px 6px;
+      font-weight: bold;
+      font-size: 0.95rem;
       border: 1px solid #ccc;
       border-radius: 4px;
-      color: #27ae60;
     }
+
+    .input-costo { width: 90px; color: #c0392b; }
+    .input-ganancia { width: 65px; color: #d35400; text-align: center; }
+    .input-venta { width: 100px; color: #27ae60; }
 
     .btn-delete {
       background-color: transparent;
@@ -172,7 +180,7 @@
     }
     .stock-count.alert { color: #e74c3c; font-size: 1.3rem; }
 
-    /* Modal Formulario */
+    /* Modales */
     .modal-overlay {
       position: fixed;
       top: 0; left: 0;
@@ -210,7 +218,6 @@
       margin-bottom: 12px;
       font-size: 0.85rem;
     }
-    .calc-box div { margin-bottom: 4px; }
     .calc-box strong { color: #1e8449; }
   </style>
 </head>
@@ -248,23 +255,22 @@
         
         <div class="form-row">
           <div class="form-group" style="flex: 1;">
-            <label for="new-costo">Costo Mayorista ($) *</label>
-            <input type="number" id="new-costo" step="0.01" min="0" value="0" required oninput="calcularPreciosModal()" />
+            <label for="new-costo">Precio de Costo ($) *</label>
+            <input type="number" id="new-costo" step="0.01" min="0" value="1000" required oninput="calcularPreciosModal()" />
           </div>
           <div class="form-group" style="flex: 1;">
-            <label for="new-unidades">Unid. por Pack *</label>
-            <input type="number" id="new-unidades" min="1" value="1" required oninput="calcularPreciosModal()" />
+            <label for="new-ganancia">% Ganancia *</label>
+            <input type="number" id="new-ganancia" step="0.1" min="0" value="50" required oninput="calcularPreciosModal()" />
           </div>
         </div>
 
         <div class="calc-box">
-          <div><strong>Costo Unitario:</strong> $<span id="calc-unitario">0.00</span></div>
-          <div><strong>Sugerido (+50% Ganancia):</strong> $<span id="calc-sugerido">0.00</span></div>
+          <strong>Precio de Venta Calculado:</strong> $<span id="calc-precio-venta">1500.00</span>
         </div>
 
         <div class="form-group">
-          <label for="new-precio">Precio de Venta ($) *</label>
-          <input type="number" id="new-precio" step="0.01" min="0" required placeholder="Monto final al cliente" />
+          <label for="new-precio">Precio de Venta Final ($) *</label>
+          <input type="number" id="new-precio" step="0.01" min="0" required placeholder="Monto al cliente" oninput="ajustarGananciaDesdePrecioModal()" />
         </div>
 
         <div class="form-row">
@@ -287,27 +293,22 @@
   </div>
 
 <script>
-  // Productos base integrados
+  // Productos iniciales con fórmula de costo + % ganancia
   const PRODUCTOS_INICIALES = [
-    { sku: "779123400001", nombre: "Cuaderno Tapa Dura A4 84 Hojas Rayado", categoria: "Cuadernos", costo: 3200, unidadesPack: 1, precio: 4800, stock: 12, minimo: 5 },
-    { sku: "779123400002", nombre: "Cuaderno Tapa Dura A4 84 Hojas Cuadriculado", categoria: "Cuadernos", costo: 3200, unidadesPack: 1, precio: 4800, stock: 4, minimo: 5 },
-    { sku: "779123400003", nombre: "Repuesto Hojas Nº 3 x 96 Hojas Rayadas", categoria: "Repuestos", costo: 1800, unidadesPack: 1, precio: 2700, stock: 20, minimo: 8 },
-    { sku: "779123400004", nombre: "Repuesto Hojas Nº 3 x 96 Hojas Cuadriculadas", categoria: "Repuestos", costo: 1800, unidadesPack: 1, precio: 2700, stock: 3, minimo: 8 },
-    { sku: "779123400005", nombre: "Birome Roller Tinta Gel Azul (Pack x12)", categoria: "Escritura", costo: 4800, unidadesPack: 12, precio: 600, stock: 24, minimo: 10 },
-    { sku: "779123400006", nombre: "Lápiz Negro HB Grafito (Pack x12)", categoria: "Escritura", costo: 2400, unidadesPack: 12, precio: 300, stock: 36, minimo: 12 },
-    { sku: "779123400007", nombre: "Resma Papel A4 75g x 500 Hojas", categoria: "Papelería", costo: 5500, unidadesPack: 1, precio: 8250, stock: 2, minimo: 6 },
-    { sku: "779123400008", nombre: "Resma Papel Oficio 75g x 500 Hojas", categoria: "Papelería", costo: 6200, unidadesPack: 1, precio: 9300, stock: 8, minimo: 4 },
-    { sku: "779123400009", nombre: "Resaltador Pastel Surtido (Pack x4)", categoria: "Escritura", costo: 2200, unidadesPack: 4, precio: 825, stock: 15, minimo: 6 },
-    { sku: "779123400010", nombre: "Adhesivo Vinílico Sintético 120g", categoria: "Pegamentos", costo: 950, unidadesPack: 1, precio: 1425, stock: 18, minimo: 5 },
-    { sku: "779123400011", nombre: "Cinta Adhesiva Transparente 12x30", categoria: "Cintas", costo: 350, unidadesPack: 1, precio: 525, stock: 25, minimo: 10 },
-    { sku: "779123400012", nombre: "Tijera Escolar 13cm Acero Inoxidable", categoria: "Útiles", costo: 1100, unidadesPack: 1, precio: 1650, stock: 5, minimo: 5 },
-    { sku: "779123400013", nombre: "Regla Plástica Transparente 20cm", categoria: "Geometría", costo: 400, unidadesPack: 1, precio: 600, stock: 30, minimo: 8 },
-    { sku: "779123400014", nombre: "Goma de Borrar Dos Colores Lápiz/Tinta", categoria: "Escritura", costo: 250, unidadesPack: 1, precio: 375, stock: 40, minimo: 10 },
-    { sku: "779123400015", nombre: "Sacapuntas Metálico Doble Orificio", categoria: "Útiles", costo: 600, unidadesPack: 1, precio: 900, stock: 2, minimo: 6 }
+    { sku: "779123400001", nombre: "Cuaderno Tapa Dura A4 84 Hojas Rayado", categoria: "Cuadernos", costo: 3200, ganancia: 50, precio: 4800, stock: 12, minimo: 5 },
+    { sku: "779123400002", nombre: "Cuaderno Tapa Dura A4 84 Hojas Cuadriculado", categoria: "Cuadernos", costo: 3200, ganancia: 50, precio: 4800, stock: 4, minimo: 5 },
+    { sku: "779123400003", nombre: "Repuesto Hojas Nº 3 x 96 Hojas Rayadas", categoria: "Repuestos", costo: 1800, ganancia: 50, precio: 2700, stock: 20, minimo: 8 },
+    { sku: "779123400004", nombre: "Repuesto Hojas Nº 3 x 96 Hojas Cuadriculadas", categoria: "Repuestos", costo: 1800, ganancia: 50, precio: 2700, stock: 3, minimo: 8 },
+    { sku: "779123400005", nombre: "Birome Roller Tinta Gel Azul", categoria: "Escritura", costo: 400, ganancia: 50, precio: 600, stock: 24, minimo: 10 },
+    { sku: "779123400006", nombre: "Lápiz Negro HB Grafito", categoria: "Escritura", costo: 200, ganancia: 50, precio: 300, stock: 36, minimo: 12 },
+    { sku: "779123400007", nombre: "Resma Papel A4 75g x 500 Hojas", categoria: "Papelería", costo: 5500, ganancia: 50, precio: 8250, stock: 2, minimo: 6 },
+    { sku: "779123400008", nombre: "Resma Papel Oficio 75g x 500 Hojas", categoria: "Papelería", costo: 6200, ganancia: 50, precio: 9300, stock: 8, minimo: 4 },
+    { sku: "779123400009", nombre: "Resaltador Pastel Surtido", categoria: "Escritura", costo: 550, ganancia: 50, precio: 825, stock: 15, minimo: 6 },
+    { sku: "779123400010", nombre: "Adhesivo Vinílico Sintético 120g", categoria: "Pegamentos", costo: 950, ganancia: 50, precio: 1425, stock: 18, minimo: 5 }
   ];
 
   const STORAGE_KEYS = {
-    PRODUCTS: 'jim_stock_productos_v2',
+    PRODUCTS: 'jim_stock_productos_v3',
     SEARCH: 'jim_stock_search_query',
     FALTANTES: 'jim_stock_solo_faltantes'
   };
@@ -326,38 +327,49 @@
     statusEl.style.color = type === 'saving' ? '#e67e22' : '#27ae60';
   }
 
-  function calcularValoresProducto(p) {
-    const costoMayorista = parseFloat(p.costo) || 0;
-    const unidadesPack = parseInt(p.unidadesPack || p.unidades_pack) || 1;
-    const costoUnitario = costoMayorista / unidadesPack;
-    const precioSugerido = costoUnitario * 1.5;
-    const precioVenta = parseFloat(p.precio) || precioSugerido;
+  // FÓRMULA DE RECARGO DIRECTO (MARKUP)
+  // Venta = Costo * (1 + Ganancia / 100)
+  function calcularPrecioVenta(costo, ganancia) {
+    const c = parseFloat(costo) || 0;
+    const g = parseFloat(ganancia) || 0;
+    return c * (1 + (g / 100));
+  }
 
-    return { costoMayorista, unidadesPack, costoUnitario, precioSugerido, precioVenta };
+  // Ganancia (%) = ((Venta - Costo) / Costo) * 100
+  function calcularPorcentajeGanancia(costo, venta) {
+    const c = parseFloat(costo) || 0;
+    const v = parseFloat(venta) || 0;
+    if (c <= 0) return 0;
+    return ((v - c) / c) * 100;
   }
 
   function calcularPreciosModal() {
     const costo = parseFloat(document.getElementById('new-costo').value) || 0;
-    const unidades = parseInt(document.getElementById('new-unidades').value) || 1;
-    const unitario = costo / unidades;
-    const sugerido = unitario * 1.5;
+    const ganancia = parseFloat(document.getElementById('new-ganancia').value) || 0;
+    
+    const ventaCalculada = calcularPrecioVenta(costo, ganancia);
 
-    document.getElementById('calc-unitario').textContent = unitario.toFixed(2);
-    document.getElementById('calc-sugerido').textContent = sugerido.toFixed(2);
+    document.getElementById('calc-precio-venta').textContent = ventaCalculada.toFixed(2);
+    document.getElementById('new-precio').value = ventaCalculada.toFixed(2);
+  }
 
-    const inputPrecio = document.getElementById('new-precio');
-    if (!inputPrecio.value || inputPrecio.dataset.autocompletado === "true") {
-      inputPrecio.value = sugerido.toFixed(2);
-      inputPrecio.dataset.autocompletado = "true";
+  function ajustarGananciaDesdePrecioModal() {
+    const costo = parseFloat(document.getElementById('new-costo').value) || 0;
+    const precioVenta = parseFloat(document.getElementById('new-precio').value) || 0;
+
+    if (costo > 0) {
+      const g = calcularPorcentajeGanancia(costo, precioVenta);
+      document.getElementById('new-ganancia').value = g.toFixed(1);
+      document.getElementById('calc-precio-venta').textContent = precioVenta.toFixed(2);
     }
   }
 
   function autoguardarLocal() {
-    setStatus('⌛ Guardando...', 'saving');
+    setStatus('⌛ Guardando cambios...', 'saving');
     localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(productos));
     setTimeout(() => {
-      setStatus('● Autoguardado Activo (Cambios guardados en este dispositivo)', 'ok');
-    }, 250);
+      setStatus('● Autoguardado Activo (Modo Local Sin Token)', 'ok');
+    }, 200);
   }
 
   function cargarDatosInicios() {
@@ -405,10 +417,10 @@
   function abrirModalNuevoProducto() {
     modalEl.classList.add('active');
     document.getElementById('add-product-form').reset();
-    document.getElementById('new-unidades').value = 1;
+    document.getElementById('new-costo').value = 1000;
+    document.getElementById('new-ganancia').value = 50;
     document.getElementById('new-stock').value = 10;
     document.getElementById('new-minimo').value = 5;
-    document.getElementById('new-precio').dataset.autocompletado = "false";
     calcularPreciosModal();
   }
 
@@ -423,7 +435,7 @@
     const nombre = document.getElementById('new-nombre').value.trim();
     const categoria = document.getElementById('new-categoria').value.trim() || 'Librería';
     const costo = parseFloat(document.getElementById('new-costo').value) || 0;
-    const unidadesPack = parseInt(document.getElementById('new-unidades').value, 10) || 1;
+    const ganancia = parseFloat(document.getElementById('new-ganancia').value) || 0;
     const precio = parseFloat(document.getElementById('new-precio').value) || 0;
     const stock = parseInt(document.getElementById('new-stock').value, 10) || 0;
     const minimo = parseInt(document.getElementById('new-minimo').value, 10) || 5;
@@ -434,7 +446,7 @@
       return;
     }
 
-    const nuevoProd = { sku, nombre, categoria, costo, unidadesPack, precio, stock, minimo };
+    const nuevoProd = { sku, nombre, categoria, costo, ganancia, precio, stock, minimo };
     productos.push(nuevoProd);
 
     render();
@@ -453,24 +465,34 @@
     }
   }
 
+  function actualizarValoresTarjeta(sku, campo, valor) {
+    const prod = productos.find(p => String(p.sku) === String(sku));
+    if (!prod) return;
+
+    const numVal = parseFloat(valor.replace(',', '.'));
+    if (isNaN(numVal) || numVal < 0) return;
+
+    if (campo === 'costo') {
+      prod.costo = numVal;
+      prod.precio = calcularPrecioVenta(prod.costo, prod.ganancia || 50);
+    } else if (campo === 'ganancia') {
+      prod.ganancia = numVal;
+      prod.precio = calcularPrecioVenta(prod.costo, prod.ganancia);
+    } else if (campo === 'precio') {
+      prod.precio = numVal;
+      prod.ganancia = calcularPorcentajeGanancia(prod.costo, prod.precio);
+    }
+
+    render();
+    autoguardarLocal();
+  }
+
   function modificarStock(sku, delta) {
     const prod = productos.find(p => String(p.sku) === String(sku));
     if (prod) {
       const nuevoStock = (Number(prod.stock) || 0) + delta;
       prod.stock = nuevoStock < 0 ? 0 : nuevoStock;
       
-      render();
-      autoguardarLocal();
-    }
-  }
-
-  function modificarPrecioVenta(sku, nuevoPrecioStr) {
-    const nuevoPrecio = parseFloat(nuevoPrecioStr.replace(',', '.'));
-    if (isNaN(nuevoPrecio) || nuevoPrecio < 0) return;
-
-    const prod = productos.find(p => String(p.sku) === String(sku));
-    if (prod && prod.precio !== nuevoPrecio) {
-      prod.precio = nuevoPrecio;
       render();
       autoguardarLocal();
     }
@@ -510,7 +532,9 @@
       const limiteMinimo = p.minimo !== undefined ? Number(p.minimo) : 5;
       const esCritico = stockActual <= limiteMinimo;
 
-      const calc = calcularValoresProducto(p);
+      const costoVal = parseFloat(p.costo) || 0;
+      const gananciaVal = p.ganancia !== undefined ? parseFloat(p.ganancia) : 50;
+      const precioVentaVal = p.precio !== undefined ? parseFloat(p.precio) : calcularPrecioVenta(costoVal, gananciaVal);
 
       const card = document.createElement('div');
       card.className = `product-card ${esCritico ? 'low-stock' : ''}`;
@@ -521,17 +545,32 @@
           <div class="card-title">${p.nombre}</div>
           
           <div class="price-details">
-            <span><strong>Costo Mayorista:</strong> $${calc.costoMayorista.toLocaleString('es-AR')}</span>
-            ${calc.unidadesPack > 1 ? `<span>| <strong>Pack x${calc.unidadesPack}</strong></span>` : ''}
-            <span>| <strong>Unitario:</strong> $${calc.costoUnitario.toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-          </div>
+            <div class="price-input-group">
+              <label>Costo $</label>
+              <input type="number" 
+                     step="0.01" 
+                     class="input-costo"
+                     value="${costoVal}" 
+                     onchange="actualizarValoresTarjeta('${p.sku}', 'costo', this.value)" />
+            </div>
 
-          <div class="card-price">
-            <label style="font-size: 0.9rem; font-weight: bold; color: #2c3e50;">Venta: $</label>
-            <input type="number" 
-                   step="0.01" 
-                   value="${calc.precioVenta}" 
-                   onchange="modificarPrecioVenta('${p.sku}', this.value)" />
+            <div class="price-input-group">
+              <label>% Gan.</label>
+              <input type="number" 
+                     step="0.1" 
+                     class="input-ganancia"
+                     value="${gananciaVal.toFixed(1)}" 
+                     onchange="actualizarValoresTarjeta('${p.sku}', 'ganancia', this.value)" />
+            </div>
+
+            <div class="price-input-group">
+              <label>Venta $</label>
+              <input type="number" 
+                     step="0.01" 
+                     class="input-venta"
+                     value="${precioVentaVal.toFixed(2)}" 
+                     onchange="actualizarValoresTarjeta('${p.sku}', 'precio', this.value)" />
+            </div>
           </div>
 
           <button class="btn-delete" onclick="eliminarProducto('${p.sku}')">🗑️ Dar de Baja</button>
@@ -548,10 +587,6 @@
   }
 
   if (searchInput) searchInput.addEventListener('input', render);
-
-  document.getElementById('new-precio').addEventListener('input', function() {
-    this.dataset.autocompletado = "false";
-  });
 
   cargarDatosInicios();
 </script>

@@ -5,133 +5,54 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Control de Stock</title>
   <style>
-    * {
-      box-sizing: border-box;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    }
-
-    body {
-      background-color: #f4f6f8;
-      margin: 0;
-      padding: 15px;
-      color: #333;
-    }
-
+    /* Estilos del modal y botones de control */
     .header-actions {
       display: flex;
       gap: 10px;
-      margin-bottom: 12px;
+      margin-bottom: 15px;
       flex-wrap: wrap;
     }
 
     .btn-action {
-      padding: 10px 14px;
+      padding: 8px 12px;
       border: none;
       border-radius: 6px;
       font-weight: bold;
-      font-size: 0.9rem;
       cursor: pointer;
       background-color: #2c3e50;
       color: white;
       transition: background-color 0.2s;
     }
 
-    .btn-action:hover { background-color: #34495e; }
-    .btn-add { background-color: #27ae60; }
-    .btn-add:hover { background-color: #219150; }
-    .btn-token { background-color: #7f8c8d; }
-
-    #sync-status {
-      font-weight: bold;
-      font-size: 0.85rem;
-      margin-bottom: 10px;
-    }
-    .sync-saving { color: #d35400; }
-    .sync-ok { color: #27ae60; }
-    .sync-error { color: #c0392b; }
-
-    #search-input {
-      width: 100%;
-      padding: 10px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      font-size: 1rem;
-      margin-bottom: 15px;
+    .btn-action:hover {
+      background-color: #34495e;
     }
 
-    /* Tarjetas de Producto */
-    .product-card {
-      background: white;
-      border-radius: 8px;
-      padding: 12px;
-      margin-bottom: 10px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.08);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-left: 5px solid #27ae60;
+    .btn-add {
+      background-color: #27ae60;
     }
 
-    .product-card.low-stock {
-      border-left-color: #e74c3c;
+    .btn-add:hover {
+      background-color: #219150;
     }
 
-    .card-info { flex: 1; }
-    .card-category { font-size: 0.75rem; color: #7f8c8d; text-transform: uppercase; }
-    .card-title { font-weight: bold; font-size: 1rem; color: #2c3e50; margin: 2px 0; }
-    
-    .btn-delete {
-      background-color: transparent;
-      color: #e74c3c;
-      border: 1px solid #e74c3c;
-      border-radius: 4px;
-      padding: 4px 8px;
-      font-size: 0.75rem;
-      cursor: pointer;
-      margin-top: 8px;
-      font-weight: bold;
-    }
-    .btn-delete:hover { background-color: #fadbd8; }
-
-    .card-controls {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .btn-stock {
-      width: 36px;
-      height: 36px;
-      border-radius: 6px;
-      border: none;
-      font-size: 1.2rem;
-      font-weight: bold;
-      cursor: pointer;
-      color: white;
-    }
-    .btn-minus { background-color: #e74c3c; }
-    .btn-plus { background-color: #27ae60; }
-
-    .stock-count {
-      font-weight: bold;
-      font-size: 1.1rem;
-      min-width: 30px;
-      text-align: center;
-    }
-    .stock-count.alert { color: #e74c3c; }
-
-    /* Modales */
+    /* Modal Overlay */
     .modal-overlay {
       position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
       background: rgba(0, 0, 0, 0.5);
       display: none;
       justify-content: center;
       align-items: center;
       z-index: 1000;
     }
-    .modal-overlay.active { display: flex; }
+
+    .modal-overlay.active {
+      display: flex;
+    }
 
     .modal-content {
       background: white;
@@ -142,13 +63,49 @@
       box-shadow: 0 4px 10px rgba(0,0,0,0.3);
     }
 
-    .modal-content h3 { margin-top: 0; color: #2c3e50; }
-    .form-group { margin-bottom: 12px; }
-    .form-group label { display: block; font-size: 0.85rem; font-weight: bold; margin-bottom: 4px; color: #333; }
-    .form-group input { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
-    .form-row { display: flex; gap: 10px; }
-    .modal-buttons { display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px; }
-    .btn-cancel { background-color: #7f8c8d; }
+    .modal-content h3 {
+      margin-top: 0;
+      color: #2c3e50;
+    }
+
+    .form-group {
+      margin-bottom: 12px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: bold;
+      margin-bottom: 4px;
+      color: #333;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 8px;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    .form-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .modal-buttons {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .btn-cancel {
+      background-color: #7f8c8d;
+    }
+
+    .sync-ok { color: #27ae60; font-weight: bold; }
+    .sync-saving { color: #e67e22; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -156,14 +113,12 @@
   <div class="header-actions">
     <button class="btn-action btn-add" onclick="abrirModalNuevoProducto()">➕ Nuevo Producto</button>
     <button id="filter-btn" class="btn-action" onclick="toggleFaltantes()">⭐ Reponer Faltantes</button>
-    <button class="btn-action btn-token" onclick="solicitarToken(true)">🔑 Configurar Token</button>
   </div>
 
   <div id="sync-status"></div>
-  <input type="text" id="search-input" placeholder="Buscar por SKU o Nombre..." />
+  <input type="text" id="search-input" placeholder="Buscar por SKU o Nombre..." style="width: 100%; padding: 8px; margin-bottom: 15px; box-sizing: border-box;" />
   <div id="product-list"></div>
 
-  <!-- Modal para Agregar Producto -->
   <div id="product-modal" class="modal-overlay">
     <div class="modal-content">
       <h3>➕ Agregar Nuevo Producto</h3>
@@ -205,321 +160,4 @@
 
         <div class="modal-buttons">
           <button type="button" class="btn-action btn-cancel" onclick="cerrarModalNuevoProducto()">Cancelar</button>
-          <button type="submit" class="btn-action btn-add">Guardar Producto</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-<script>
-  const CONFIG = {
-    OWNER: 'Marvin-894',
-    REPO: 'control-stock',
-    FILE: 'stock.json'
-  };
-
-  const STORAGE_KEYS = {
-    TOKEN: 'stock_app_gh_token',
-    PRODUCTS: 'stock_app_productos',
-    SEARCH: 'stock_app_search_query',
-    FALTANTES: 'stock_app_solo_faltantes'
-  };
-
-  let githubToken = '';
-  let productos = [];
-  let fileSha = '';
-  let soloFaltantes = false;
-  let guardando = false;
-
-  const statusEl = document.getElementById('sync-status');
-  const listEl = document.getElementById('product-list');
-  const searchInput = document.getElementById('search-input');
-  const modalEl = document.getElementById('product-modal');
-
-  // Conversión UTF-8 limpia a Base64
-  function utf8ToBase64(str) {
-    const bytes = new TextEncoder().encode(str);
-    let bin = '';
-    bytes.forEach(b => bin += String.fromCharCode(b));
-    return btoa(bin);
-  }
-
-  function base64ToUtf8(str) {
-    const bin = atob(str);
-    const bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    return new TextDecoder().decode(bytes);
-  }
-
-  function setStatus(text, type) {
-    if (!statusEl) return;
-    statusEl.textContent = text;
-    statusEl.className = type ? `sync-${type}` : '';
-  }
-
-  function solicitarToken(forzar = false) {
-    let t = localStorage.getItem(STORAGE_KEYS.TOKEN);
-    if (!t || forzar) {
-      t = prompt('Ingresá tu GitHub Personal Access Token (PAT):', t || '');
-      if (t) {
-        localStorage.setItem(STORAGE_KEYS.TOKEN, t.trim());
-      }
-    }
-    githubToken = t ? t.trim() : '';
-  }
-
-  function restaurarEstadoLocal() {
-    solicitarToken(false);
-
-    const productosCache = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
-    if (productosCache) {
-      try { productos = JSON.parse(productosCache); } catch (e) { console.error(e); }
-    }
-
-    const queryGuardada = localStorage.getItem(STORAGE_KEYS.SEARCH);
-    if (queryGuardada !== null && searchInput) searchInput.value = queryGuardada;
-
-    const faltantesGuardado = localStorage.getItem(STORAGE_KEYS.FALTANTES);
-    if (faltantesGuardado !== null) {
-      soloFaltantes = faltantesGuardado === 'true';
-      actualizarBotonFaltantesUI();
-    }
-
-    render();
-  }
-
-  function actualizarBotonFaltantesUI() {
-    const btn = document.getElementById('filter-btn');
-    if (btn) {
-      btn.classList.toggle('active', soloFaltantes);
-      btn.textContent = soloFaltantes ? 'Mostrando Faltantes (Ver Todos)' : '⭐ Reponer Faltantes';
-    }
-  }
-
-  async function cargarStock() {
-    if (guardando) return;
-    setStatus('⌛ Sincronizando...', 'saving');
-    
-    const url = `https://api.github.com/repos/${CONFIG.OWNER}/${CONFIG.REPO}/contents/${CONFIG.FILE}`;
-    
-    const headers = { 'Cache-Control': 'no-cache' };
-    if (githubToken) {
-      headers['Authorization'] = `Bearer ${githubToken}`;
-    }
-
-    try {
-      const res = await fetch(url, { headers });
-      if (!res.ok) throw new Error('Error de conexión o token inválido');
-      
-      const data = await res.json();
-      fileSha = data.sha;
-      
-      const decodedContent = base64ToUtf8(data.content.replace(/\n/g, ''));
-      productos = JSON.parse(decodedContent);
-      
-      localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(productos));
-      setStatus('● Sincronizado', 'ok');
-      render();
-    } catch (err) {
-      console.error(err);
-      setStatus('⚠️ Sin conexión / Modo Lectura', 'error');
-    }
-  }
-
-  async function guardarEnGitHub(skuModificado, accionLog) {
-    if (!githubToken) {
-      solicitarToken(true);
-      if (!githubToken) {
-        alert('Se requiere un Token de GitHub para guardar cambios.');
-        return;
-      }
-    }
-
-    guardando = true;
-    setStatus('⌛ Guardando...', 'saving');
-    
-    localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(productos));
-    const url = `https://api.github.com/repos/${CONFIG.OWNER}/${CONFIG.REPO}/contents/${CONFIG.FILE}`;
-    
-    try {
-      const jsonString = JSON.stringify(productos, null, 2);
-      const nuevoContenidoBase64 = utf8ToBase64(jsonString);
-      
-      const bodyData = {
-        message: `Actualización SKU ${skuModificado}: ${accionLog}`,
-        content: nuevoContenidoBase64,
-        sha: fileSha
-      };
-
-      const res = await fetch(url, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${githubToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(bodyData)
-      });
-
-      if (!res.ok) throw new Error('Error al guardar en GitHub. Verificá tu Token.');
-      
-      const resData = await res.json();
-      fileSha = resData.content.sha;
-      setStatus('● Sincronizado', 'ok');
-    } catch (err) {
-      console.error(err);
-      setStatus('⚠️ Error al guardar en remoto', 'error');
-      alert(err.message);
-    } finally {
-      guardando = false;
-    }
-  }
-
-  function abrirModalNuevoProducto() {
-    modalEl.classList.add('active');
-  }
-
-  function cerrarModalNuevoProducto() {
-    modalEl.classList.remove('active');
-    document.getElementById('add-product-form').reset();
-  }
-
-  function guardarNuevoProducto(e) {
-    e.preventDefault();
-    
-    const sku = document.getElementById('new-sku').value.trim();
-    const nombre = document.getElementById('new-nombre').value.trim();
-    const categoria = document.getElementById('new-categoria').value.trim() || 'Librería';
-    const costo = parseFloat(document.getElementById('new-costo').value) || 0;
-    const precio = parseFloat(document.getElementById('new-precio').value) || 0;
-    const stock = parseInt(document.getElementById('new-stock').value, 10) || 0;
-    const minimo = parseInt(document.getElementById('new-minimo').value, 10) || 5;
-
-    const existe = productos.some(p => String(p.sku) === String(sku));
-    if (existe) {
-      alert(`El SKU "${sku}" ya existe en el inventario.`);
-      return;
-    }
-
-    const nuevoProd = { sku, nombre, categoria, costo, precio, stock, minimo };
-    productos.push(nuevoProd);
-
-    render();
-    cerrarModalNuevoProducto();
-    guardarEnGitHub(sku, `Nuevo producto creado: ${nombre}`);
-  }
-
-  function eliminarProducto(sku) {
-    const prod = productos.find(p => String(p.sku) === String(sku));
-    if (!prod) return;
-
-    const confirmar = confirm(`¿Estás seguro de eliminar "${prod.nombre}" (SKU: ${sku})?`);
-    if (confirmar) {
-      productos = productos.filter(p => String(p.sku) !== String(sku));
-      render();
-      guardarEnGitHub(sku, `Producto eliminado: ${prod.nombre}`);
-    }
-  }
-
-  function modificarStock(sku, delta) {
-    const prod = productos.find(p => String(p.sku) === String(sku));
-    if (prod) {
-      const nuevoStock = (Number(prod.stock) || 0) + delta;
-      prod.stock = nuevoStock < 0 ? 0 : nuevoStock;
-      
-      render();
-      guardarEnGitHub(sku, `Stock ajustado a ${prod.stock}`);
-    }
-  }
-
-  function modificarPrecioVenta(sku, nuevoPrecioStr) {
-    const nuevoPrecio = parseFloat(nuevoPrecioStr.replace(',', '.'));
-    if (isNaN(nuevoPrecio) || nuevoPrecio < 0) return;
-
-    const prod = productos.find(p => String(p.sku) === String(sku));
-    if (prod && prod.precio !== nuevoPrecio) {
-      prod.precio = nuevoPrecio;
-      render();
-      guardarEnGitHub(sku, `Precio de venta actualizado a $${nuevoPrecio}`);
-    }
-  }
-
-  function toggleFaltantes() {
-    soloFaltantes = !soloFaltantes;
-    localStorage.setItem(STORAGE_KEYS.FALTANTES, soloFaltantes);
-    actualizarBotonFaltantesUI();
-    render();
-  }
-
-  function render() {
-    const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
-    if (searchInput) localStorage.setItem(STORAGE_KEYS.SEARCH, searchInput.value);
-
-    listEl.innerHTML = '';
-
-    const filtrados = productos.filter(p => {
-      const nombre = (p.nombre || '').toLowerCase();
-      const sku = String(p.sku || '').toLowerCase();
-      const coincideBusqueda = nombre.includes(query) || sku.includes(query);
-      
-      const limiteMinimo = p.minimo !== undefined ? Number(p.minimo) : 5;
-      const esFaltante = (Number(p.stock) || 0) <= limiteMinimo;
-      
-      return coincideBusqueda && (soloFaltantes ? esFaltante : true);
-    });
-
-    if (filtrados.length === 0) {
-      listEl.innerHTML = `<div style="text-align:center; padding: 20px; color: #78909c; font-weight: 600;">No se encontraron productos ${soloFaltantes ? 'para reponer' : ''}.</div>`;
-      return;
-    }
-
-    filtrados.forEach(p => {
-      const stockActual = Number(p.stock) || 0;
-      const limiteMinimo = p.minimo !== undefined ? Number(p.minimo) : 5;
-      const esCritico = stockActual <= limiteMinimo;
-
-      const costoMayorista = p.costo !== undefined ? Number(p.costo) : 0;
-      const precioUnitario = p.precioUnitario !== undefined ? Number(p.precioUnitario) : 0;
-      const precioVenta = Number(p.precio) || 0;
-
-      const card = document.createElement('div');
-      card.className = `product-card ${esCritico ? 'low-stock' : ''}`;
-      
-      card.innerHTML = `
-        <div class="card-info">
-          <div class="card-category">${p.categoria || 'Librería'} | SKU: ${p.sku}</div>
-          <div class="card-title">${p.nombre}</div>
-          
-          <div class="price-details" style="font-size: 0.82rem; color: #555; margin-top: 4px;">
-            <span><strong>Costo Mayorista:</strong> $${costoMayorista.toLocaleString('es-AR')}</span>
-            ${precioUnitario > 0 ? `<span style="margin-left: 8px;">| <strong>Unitario:</strong> $${precioUnitario.toLocaleString('es-AR')}</span>` : ''}
-          </div>
-
-          <div class="card-price" style="margin-top: 6px; display: flex; align-items: center; gap: 6px;">
-            <label style="font-size: 0.9rem; font-weight: bold; color: #2c3e50;">Venta: $</label>
-            <input type="number" 
-                   step="0.01" 
-                   value="${precioVenta}" 
-                   style="width: 100px; padding: 4px 6px; font-weight: bold; font-size: 1rem; border: 1px solid #ccc; border-radius: 4px;"
-                   onchange="modificarPrecioVenta('${p.sku}', this.value)" />
-          </div>
-
-          <button class="btn-delete" onclick="eliminarProducto('${p.sku}')">🗑️ Eliminar</button>
-        </div>
-
-        <div class="card-controls">
-          <button class="btn-stock btn-minus" onclick="modificarStock('${p.sku}', -1)">-</button>
-          <span class="stock-count ${esCritico ? 'alert' : ''}">${stockActual}</span>
-          <button class="btn-stock btn-plus" onclick="modificarStock('${p.sku}', 1)">+</button>
-        </div>
-      `;
-      listEl.appendChild(card);
-    });
-  }
-
-  if (searchInput) searchInput.addEventListener('input', render);
-
-  restaurarEstadoLocal();
-  cargarStock();
-</script>
-</body>
-</html>
+          <button type

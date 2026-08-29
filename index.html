@@ -1,9 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Control de Stock</title>
+  <style>
+    .header-actions {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
+    }
+
+    .btn-action {
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      background-color: #2c3e50;
+      color: white;
+      transition: background-color 0.2s;
+    }
+
+    .btn-action:hover { background-color: #34495e; }
+    .btn-add { background-color: #27ae60; }
+    .btn-add:hover { background-color: #219150; }
+
+    .btn-delete {
+      background-color: #e74c3c;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+    .btn-delete:hover { background-color: #c0392b; }
+
+    /* Modal Overlay */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .modal-overlay.active { display: flex; }
+
+    .modal-content {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 450px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+
+    .modal-content h3 { margin-top: 0; color: #2c3e50; }
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: 0.85rem; font-weight: bold; margin-bottom: 4px; color: #333; }
+    .form-group input { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+    .form-row { display: flex; gap: 10px; }
+    .modal-buttons { display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px; }
+    .btn-cancel { background-color: #7f8c8d; }
+  </style>
+</head>
+<body>
+
+  <div class="header-actions">
+    <button class="btn-action btn-add" onclick="abrirModalNuevoProducto()">➕ Nuevo Producto</button>
+    <button id="filter-btn" class="btn-action" onclick="toggleFaltantes()">⭐ Reponer Faltantes</button>
+  </div>
+
+  <div id="sync-status"></div>
+  <input type="text" id="search-input" placeholder="Buscar por SKU o Nombre..." style="width: 100%; padding: 8px; margin-bottom: 15px; box-sizing: border-box;" />
+  <div id="product-list"></div>
+
+  <!-- Modal para Agregar Producto -->
+  <div id="product-modal" class="modal-overlay">
+    <div class="modal-content">
+      <h3>➕ Agregar Nuevo Producto</h3>
+      <form id="add-product-form" onsubmit="guardarNuevoProducto(event)">
+        <div class="form-group">
+          <label for="new-sku">SKU / Código de Barras *</label>
+          <input type="text" id="new-sku" required />
+        </div>
+        <div class="form-group">
+          <label for="new-nombre">Nombre del Producto *</label>
+          <input type="text" id="new-nombre" required />
+        </div>
+        <div class="form-group">
+          <label for="new-categoria">Categoría</label>
+          <input type="text" id="new-categoria" placeholder="Librería" />
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group" style="flex: 1;">
+            <label for="new-costo">Costo Mayorista ($)</label>
+            <input type="number" id="new-costo" step="0.01" min="0" value="0" />
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label for="new-precio">Precio Venta ($) *</label>
+            <input type="number" id="new-precio" step="0.01" min="0" required />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group" style="flex: 1;">
+            <label for="new-stock">Stock Inicial *</label>
+            <input type="number" id="new-stock" min="0" value="0" required />
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label for="new-minimo">Stock Mínimo</label>
+            <input type="number" id="new-minimo" min="0" value="5" />
+          </div>
+        </div>
+
+        <div class="modal-buttons">
+          <button type="button" class="btn-action btn-cancel" onclick="cerrarModalNuevoProducto()">Cancelar</button>
+          <button type="submit" class="btn-action btn-add">Guardar Producto</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
 <script>
   const CONFIG = {
     TOKEN: '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',
     OWNER: 'Marvin-894',
     REPO: 'control-stock',
     FILE: 'stock.json'
+  };
+
+  const STORAGE_KEYS = {
+    PRODUCTS: 'stock_app_productos',
+    SEARCH: 'stock_app_search_query',
+    FALTANTES: 'stock_app_solo_faltantes'
   };
 
   let productos = [];
@@ -14,6 +154,22 @@
   const statusEl = document.getElementById('sync-status');
   const listEl = document.getElementById('product-list');
   const searchInput = document.getElementById('search-input');
+  const modalEl = document.getElementById('product-modal');
+
+  // Helpers de codificación UTF-8 segura para GitHub
+  function utf8ToBase64(str) {
+    const bytes = new TextEncoder().encode(str);
+    let bin = '';
+    bytes.forEach(b => bin += String.fromCharCode(b));
+    return btoa(bin);
+  }
+
+  function base64ToUtf8(str) {
+    const bin = atob(str);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new TextDecoder().decode(bytes);
+  }
 
   function setStatus(text, type) {
     if (!statusEl) return;
@@ -21,8 +177,34 @@
     statusEl.className = type ? `sync-${type}` : '';
   }
 
+  function restaurarEstadoLocal() {
+    const productosCache = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
+    if (productosCache) {
+      try { productos = JSON.parse(productosCache); } catch (e) { console.error(e); }
+    }
+
+    const queryGuardada = localStorage.getItem(STORAGE_KEYS.SEARCH);
+    if (queryGuardada !== null && searchInput) searchInput.value = queryGuardada;
+
+    const faltantesGuardado = localStorage.getItem(STORAGE_KEYS.FALTANTES);
+    if (faltantesGuardado !== null) {
+      soloFaltantes = faltantesGuardado === 'true';
+      actualizarBotonFaltantesUI();
+    }
+
+    render();
+  }
+
+  function actualizarBotonFaltantesUI() {
+    const btn = document.getElementById('filter-btn');
+    if (btn) {
+      btn.classList.toggle('active', soloFaltantes);
+      btn.textContent = soloFaltantes ? 'Mostrando Faltantes (Ver Todos)' : '⭐ Reponer Faltantes';
+    }
+  }
+
   async function cargarStock() {
-    if (guardando) return; // Evita sobreescribir mientras se guarda un cambio
+    if (guardando) return;
     setStatus('⌛ Sincronizando...', 'saving');
     const url = `https://api.github.com/repos/${CONFIG.OWNER}/${CONFIG.REPO}/contents/${CONFIG.FILE}`;
     
@@ -38,26 +220,28 @@
       const data = await res.json();
       fileSha = data.sha;
       
-      // Decodificación UTF-8 segura para acentos y caracteres especiales
-      const decodedContent = decodeURIComponent(escape(atob(data.content)));
+      const decodedContent = base64ToUtf8(data.content.replace(/\n/g, ''));
       productos = JSON.parse(decodedContent);
       
+      localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(productos));
       setStatus('● Sincronizado', 'ok');
       render();
     } catch (err) {
       console.error(err);
-      setStatus('⚠️ Sin conexión', 'error');
+      setStatus('⚠️ Sin conexión (Modo Offline)', 'error');
     }
   }
 
   async function guardarEnGitHub(skuModificado, accionLog) {
     guardando = true;
     setStatus('⌛ Guardando...', 'saving');
+    
+    localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(productos));
     const url = `https://api.github.com/repos/${CONFIG.OWNER}/${CONFIG.REPO}/contents/${CONFIG.FILE}`;
     
     try {
       const jsonString = JSON.stringify(productos, null, 2);
-      const nuevoContenidoBase64 = btoa(unescape(encodeURIComponent(jsonString)));
+      const nuevoContenidoBase64 = utf8ToBase64(jsonString);
       
       const bodyData = {
         message: `Actualización SKU ${skuModificado}: ${accionLog}`,
@@ -77,13 +261,59 @@
       if (!res.ok) throw new Error('Error al guardar en GitHub');
       
       const resData = await res.json();
-      fileSha = resData.content.sha; // Actualiza el SHA para el próximo guardado
+      fileSha = resData.content.sha;
       setStatus('● Sincronizado', 'ok');
     } catch (err) {
       console.error(err);
-      setStatus('⚠️ Error al guardar', 'error');
+      setStatus('⚠️ Error al guardar en remoto', 'error');
     } finally {
       guardando = false;
+    }
+  }
+
+  function abrirModalNuevoProducto() {
+    modalEl.classList.add('active');
+  }
+
+  function cerrarModalNuevoProducto() {
+    modalEl.classList.remove('active');
+    document.getElementById('add-product-form').reset();
+  }
+
+  function guardarNuevoProducto(e) {
+    e.preventDefault();
+    
+    const sku = document.getElementById('new-sku').value.trim();
+    const nombre = document.getElementById('new-nombre').value.trim();
+    const categoria = document.getElementById('new-categoria').value.trim() || 'Librería';
+    const costo = parseFloat(document.getElementById('new-costo').value) || 0;
+    const precio = parseFloat(document.getElementById('new-precio').value) || 0;
+    const stock = parseInt(document.getElementById('new-stock').value, 10) || 0;
+    const minimo = parseInt(document.getElementById('new-minimo').value, 10) || 5;
+
+    const existe = productos.some(p => String(p.sku) === String(sku));
+    if (existe) {
+      alert(`El SKU "${sku}" ya existe en el inventario.`);
+      return;
+    }
+
+    const nuevoProd = { sku, nombre, categoria, costo, precio, stock, minimo };
+    productos.push(nuevoProd);
+
+    render();
+    cerrarModalNuevoProducto();
+    guardarEnGitHub(sku, `Nuevo producto creado: ${nombre}`);
+  }
+
+  function eliminarProducto(sku) {
+    const prod = productos.find(p => String(p.sku) === String(sku));
+    if (!prod) return;
+
+    const confirmar = confirm(`¿Estás seguro de que querés eliminar el producto "${prod.nombre}" (SKU: ${sku})?`);
+    if (confirmar) {
+      productos = productos.filter(p => String(p.sku) !== String(sku));
+      render();
+      guardarEnGitHub(sku, `Producto eliminado: ${prod.nombre}`);
     }
   }
 
@@ -93,7 +323,7 @@
       const nuevoStock = (Number(prod.stock) || 0) + delta;
       prod.stock = nuevoStock < 0 ? 0 : nuevoStock;
       
-      render(); // Actualiza la pantalla inmediatamente
+      render();
       guardarEnGitHub(sku, `Stock ajustado a ${prod.stock}`);
     }
   }
@@ -112,16 +342,15 @@
 
   function toggleFaltantes() {
     soloFaltantes = !soloFaltantes;
-    const btn = document.getElementById('filter-btn');
-    if (btn) {
-      btn.classList.toggle('active', soloFaltantes);
-      btn.textContent = soloFaltantes ? 'Mostrando Faltantes (Ver Todos)' : '⭐ Reponer Faltantes';
-    }
+    localStorage.setItem(STORAGE_KEYS.FALTANTES, soloFaltantes);
+    actualizarBotonFaltantesUI();
     render();
   }
 
   function render() {
     const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
+    if (searchInput) localStorage.setItem(STORAGE_KEYS.SEARCH, searchInput.value);
+
     listEl.innerHTML = '';
 
     const filtrados = productos.filter(p => {
@@ -132,8 +361,7 @@
       const limiteMinimo = p.minimo !== undefined ? Number(p.minimo) : 5;
       const esFaltante = (Number(p.stock) || 0) <= limiteMinimo;
       
-      const coincideFaltante = soloFaltantes ? esFaltante : true;
-      return coincideBusqueda && coincideFaltante;
+      return coincideBusqueda && (soloFaltantes ? esFaltante : true);
     });
 
     if (filtrados.length === 0) {
@@ -171,6 +399,8 @@
                    style="width: 100px; padding: 4px 6px; font-weight: bold; font-size: 1rem; border: 1px solid #ccc; border-radius: 4px;"
                    onchange="modificarPrecioVenta('${p.sku}', this.value)" />
           </div>
+
+          <button class="btn-delete" onclick="eliminarProducto('${p.sku}')">🗑️ Eliminar</button>
         </div>
 
         <div class="card-controls">
@@ -184,5 +414,9 @@
   }
 
   if (searchInput) searchInput.addEventListener('input', render);
+
+  restaurarEstadoLocal();
   cargarStock();
 </script>
+</body>
+</html>
